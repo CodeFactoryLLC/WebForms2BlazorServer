@@ -1,0 +1,100 @@
+﻿<ui:VsUserControl x:Class="WebFormsToBlazorServerCommands.Dialogs.SetupBlazorDialog"
+                  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+                  xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+                  xmlns:local="clr-namespace:WebFormsToBlazorServerCommands.Dialogs"
+                  xmlns:ui="clr-namespace:CodeFactory.VisualStudio.UI;assembly=CodeFactory.VisualStudio"
+                  mc:Ignorable="d" 
+                  WindowTitle="Setup Blazor Project from a Webforms Project"
+                  Height="800" 
+                  MaxHeight="800"
+                  MinWidth="800" 
+                  MaxWidth="1024"
+                  Name="SetupBlazorView">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="80"/>
+            <RowDefinition Height="130"/>
+            <RowDefinition/>
+            <RowDefinition Height="50"/>
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="ProjectSelectionGrid" Grid.Row="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40"/>
+                <RowDefinition Height="40"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="190"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Label Name="LabelWebFormsProjectTitle" Grid.Row="0" Grid.Column="0" FontSize="14"  Content="Source WebForms Project:" Margin="5" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" />
+            <ComboBox Name="ComboboxWebFormsProject" Grid.Row="0" Grid.Column="1" ItemsSource="{Binding ElementName=SetupBlazorView, Path=SolutionProjects}" DisplayMemberPath="Name" Margin="5"/>
+            <Label Name="LabelBlazorProjectTitle" Grid.Row="1" Grid.Column="0"  FontSize="14"  Content="Target Blazor Project:" Margin="5" HorizontalContentAlignment="Left" VerticalContentAlignment="Center" />
+            <ComboBox Name="ComboboxBlazorProject" Grid.Row="1" Grid.Column="1" ItemsSource="{Binding ElementName=SetupBlazorView, Path=SolutionProjects}" DisplayMemberPath="Name" Margin="5"/>
+        </Grid>
+        <StackPanel Name="StackPanelMigrationSteps" Grid.Row="1">
+            <Label Name="LabelMigrationStepsTitle" HorizontalAlignment="Left" Margin="5" Content="Migration Steps:" FontSize="16" FontWeight="Bold" />
+            <Border BorderBrush="Black" BorderThickness="1"  Margin="5"  >
+                <Grid x:Name="GridStatus" >
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="35" />
+                        <RowDefinition Height="35" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition Width="170"/>
+                        <ColumnDefinition />
+                    </Grid.ColumnDefinitions>
+                    <Border Name="BorderStartupProcess" Grid.Row="0" Grid.Column="0"  Margin="1" BorderBrush="Black" BorderThickness="2" Visibility="Hidden"  />
+                    <CheckBox Name="CheckBoxStartupProcess" Grid.Row="0" Grid.Column="0" Content="Migrate Startup Process" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" IsChecked="True"/>
+                    <TextBlock Name="TextBlockStartupProcessStatus" Grid.Row="0" Grid.Column="0" Text="Startup Processes" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" Visibility="Hidden" />
+                    <Border Name="BorderMigrateStaticFiles" Grid.Row="0" Grid.Column="1"  Margin="1" BorderBrush="Black" BorderThickness="2" Visibility="Hidden" />
+                    <CheckBox Name="CheckBoxMigrateStaticFiles" Grid.Row="0" Grid.Column="1" Content="Migrate Static Files" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" IsChecked="True"/>
+                    <TextBlock Name="TextBlockMigrateStaticFilesStatus" Grid.Row="0" Grid.Column="1" Text="Migrate Static Files" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" Visibility="Hidden" />
+                    <Border Name="BorderMigrateAspxPages" Grid.Row="0" Grid.Column="2"  Margin="1" BorderBrush="Black" BorderThickness="2" Visibility="Hidden" />
+                    <CheckBox Name="CheckBoxMigrateAspxPages" Grid.Row="0" Grid.Column="2" Content="Migrate ASPX Pages" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" IsChecked="True"/>
+                    <TextBlock Name="TextBlockMigrateAspxPagesStatus" Grid.Row="0" Grid.Column="2" Text="Migrate ASPX Pages" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" Visibility="Hidden" />
+                    <Border Name="BorderMigrateLogic" Grid.Row="0" Grid.Column="3"  Margin="1" BorderBrush="Black" BorderThickness="2" Visibility="Hidden"  />
+                    <CheckBox Name="CheckBoxMigrateLogic" Grid.Row="0" Grid.Column="3" Content="Migrate Logic" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" IsChecked="True"/>
+                    <TextBlock Name="TextBlockMigrateLogicStatus" Grid.Row="0" Grid.Column="3" Text="Migrate Logic" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" Visibility="Hidden" />
+                    <Border Name="BorderMigrateHttpModules" Grid.Row="1" Grid.Column="0"  Margin="1" BorderBrush="Black" BorderThickness="2" Visibility="Hidden"  />
+                    <CheckBox Name="CheckBoxMigrateHttpModules" Grid.Row="1" Grid.Column="0" Content="Migrate HTTP Modules" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" IsChecked="True"/>
+                    <TextBlock Name="TextBlockMigrateHttpModulesStatus" Grid.Row="1" Grid.Column="0" Text="Migrate HTTP Modules" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" Visibility="Hidden" />
+                    <Border Name="BorderMigrateBundling" Grid.Row="1" Grid.Column="1"  Margin="1" BorderBrush="Black" BorderThickness="2" Visibility="Hidden" />
+                    <CheckBox Name="CheckBoxMigrateBundling" Grid.Row="1" Grid.Column="1" Content="Migrate Bundling" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" IsChecked="True"/>
+                    <TextBlock Name="TextBlockMigrateBundlingStatus" Grid.Row="1" Grid.Column="1" Text="Migrate Bundling" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" Visibility="Hidden"/>
+                    <Border Name="BorderMigrateConfiguration" Grid.Row="1" Grid.Column="2"  Margin="1" BorderBrush="Black" BorderThickness="2" Visibility="Hidden" />
+                    <CheckBox Name="CheckBoxMigrateConfiguration" Grid.Row="1" Grid.Column="2" Content="Migrate Configuration" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" IsChecked="True"/>
+                    <TextBlock Name="TextBlockMigrateConfigurationStatus" Grid.Row="1" Grid.Column="2" Text="Migrate Configuration" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" Visibility="Hidden"/>
+                    <Border Name="BorderMigrateProcess" Grid.Row="1" Grid.Column="3"  Margin="1" BorderBrush="Black" BorderThickness="2" Visibility="Hidden" />
+                    <TextBlock Name="TextBlockMigrationProcessStatus" Grid.Row="1" Grid.Column="3" Text="Loading Web Forms Project Data" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="5" Visibility="Hidden"/>
+                </Grid>
+            </Border>
+        </StackPanel>
+        <DataGrid x:Name="DataGridStatus" Grid.Row="2" Margin="5" ItemsSource="{Binding ElementName=SetupBlazorView, Path=StepStatus}">
+            <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding MessageType}" Value="Information">
+                            <Setter Property="Background" Value="White"></Setter>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding MessageType}" Value="Warning">
+                            <Setter Property="Background" Value="Yellow"></Setter>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding MessageType}" Value="Error">
+                            <Setter Property="Background" Value="Red"></Setter>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </DataGrid.RowStyle>
+        </DataGrid>
+        <WrapPanel Name="WrapPanelButtons" Grid.Row="3" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <Button x:Name="ButtonCancel" Content="Cancel" Click="ButtonCancel_Click" IsCancel="True" Width="95" Height="35" Margin="5" />
+            <Button x:Name="ButtonOk" Content="Start Migration" Width="95" Click="ButtonOk_Click" IsDefault="True" Height="35" Margin="5" />
+        </WrapPanel>
+    </Grid>
+</ui:VsUserControl>
+

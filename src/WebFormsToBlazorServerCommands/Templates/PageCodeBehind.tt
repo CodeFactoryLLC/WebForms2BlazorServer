@@ -1,0 +1,144 @@
+﻿<#@ template debug="false" hostspecific="false" language="C#" #>
+<#@ assembly name="System.Core" #>
+<#@ assembly name="CodeFactory" #>
+<#@ assembly name="CodeFactory.DotNet" #>
+<#@ assembly name="CodeFactory.VisualStudio" #>
+<#@ import namespace="System.Linq" #>
+<#@ import namespace="System.Text" #>
+<#@ import namespace="System.Collections.Generic" #>
+<#@ import namespace="CodeFactory" #>
+<#@ import namespace="CodeFactory.DotNet" #>
+<#@ import namespace="CodeFactory.DotNet.CSharp" #>
+<#@ import namespace="CodeFactory.VisualStudio" #>
+<#@ import namespace="WebFormsToBlazorServerCommands.Templates" #>
+<#@ import namespace="WebFormsToBlazorServerCommands.Migration" #>
+<#
+    //Accessing the model data passed in by GenerateSource method.
+    CodeFactory.DotNet.CSharp.CsModelStore csModelStore = CsModels;
+    if(csModelStore == null) return null;
+    if(csModelStore.Model == null) return null;
+    if(csModelStore.Model.ModelType != CsModelType.Class) return null;
+     
+    ICsClass classData = csModelStore.Model as CsClass;
+    if(classData == null) return null;
+    if(!classData.IsLoaded) return null;
+    var fullClassname= $"{classData.Namespace}.{classData.Name}";
+
+    var repositories= csModelStore.Models("repositories");
+    var repoMods = repositories.Cast<ICsSource>();
+
+    Dictionary<string, string> namespaces = ModelData as Dictionary<string, string>;
+    
+#>
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Components;
+
+
+namespace <#=namespaces["Namespace"]#>
+{
+    public class <#=classData.Name #>Base : ComponentBase
+    {
+        #region Properties
+<#  foreach (var classDataProperty in classData.Properties)  #>
+<#    { #>
+<#    if(classDataProperty.HasDocumentation)#>
+<#    {#>
+<#        var documentLines = classDataProperty.Documentation.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);#>
+<#        foreach(string docData in documentLines)#>
+<#        {#>
+<#            string formattedDocLine = FormatDocumentationLine(docData);#>
+<#            if(formattedDocLine == null) continue;#>
+        <#=formattedDocLine#>
+<#      }
+    }
+      if(classDataProperty.HasAttributes)
+    {
+        foreach(ICsAttribute attributeData in classDataProperty.Attributes)
+        {#>
+        <#=attributeData.FormatCSharpAttributeSignatureSyntax()#>
+<#      }
+    }
+    
+    string formattedProperty = classDataProperty.FormatCSharpDeclarationSyntax(true, false, false);
+    if(string.IsNullOrEmpty(formattedProperty)) return null;
+#>
+        <#=$"{formattedProperty}{Environment.NewLine}"#>
+<#    } #>
+        #endregion
+
+        #region Methods
+<#  foreach (var classDataMethod in classData.Methods) #>
+<#  { #>
+<#    if(classDataMethod.HasDocumentation)#>
+<#    {#>
+<#        var documentLines = classDataMethod.Documentation.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);#>
+<#        foreach(string docData in documentLines)#>
+<#        {#>
+<#            string formattedDocLine = FormatDocumentationLine(docData);#>
+<#            if(formattedDocLine == null) continue;#>
+        <#=formattedDocLine#>
+<#      }#>
+<#    }#>
+<#    if(classDataMethod.HasAttributes)#>
+<#    {#>
+<#        foreach(ICsAttribute attributeData in classDataMethod.Attributes)#>
+<#        {#>
+        <#=attributeData.FormatCSharpAttributeSignatureSyntax()#>
+<#        }#>
+<#    }#>
+<# #>
+<#    string formattedMethod = FormatMethodSignature(classDataMethod);#>
+<#    if(string.IsNullOrEmpty(formattedMethod)) return null;#>
+    <#=formattedMethod #>
+    {
+        <#= classDataMethod.MethodContent() #>
+    }
+<#}#>
+        #endregion
+  }
+}
+<#+ 
+private string FormatDocumentationLine(string documentation)
+{
+        if(string.IsNullOrEmpty(documentation)) return null;
+        string trimmed = documentation.Trim();
+        if(trimmed.Contains("<member")) return null;
+        if(trimmed.Contains("</member")) return null;
+        return $"///{trimmed}";
+}
+#>
+<#+
+private string FormatMethodSignature(CsMethod methodData)
+{
+        if(methodData == null) return null;
+
+        bool isAsyncReturn = false;
+        
+        bool isVoid= methodData.IsVoid;
+        if(!isVoid)
+        {
+            isAsyncReturn = methodData.IsAsync;
+            if(!isAsyncReturn) isAsyncReturn = methodData.ReturnType.Name == "Task";
+            if(!isAsyncReturn) isAsyncReturn = methodData.ReturnType.Name.StartsWith("Task<");
+        }
+        StringBuilder methodSignature = new StringBuilder($"{methodData.Security.FormatCSharpSyntax()} ");
+        
+        if(isVoid) methodSignature.Append($"{CodeFactory.DotNet.CSharp.FormattedSyntax.Keywords.Void} ");
+        else
+        {
+            if(isAsyncReturn) methodSignature.Append($"{CodeFactory.DotNet.CSharp.FormattedSyntax.CommonContextualKeywords.Async} ");
+            methodSignature.Append($"{methodData.ReturnType.FormatCSharpFullTypeName()} ");
+        }
+        methodSignature.Append(methodData.Name);
+        if(methodData.IsGeneric) methodSignature.Append(methodData.GenericParameters.FormatCSharpGenericSignatureSyntax());
+        if(methodData.HasParameters) methodSignature.Append(methodData.Parameters.FormatCSharpParametersSignatureSyntax());
+        else methodSignature.Append("()");
+        
+        return methodSignature.ToString();
+}
+
+#>
