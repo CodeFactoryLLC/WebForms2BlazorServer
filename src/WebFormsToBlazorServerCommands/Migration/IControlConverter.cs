@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
@@ -10,14 +11,12 @@ namespace WebFormsToBlazorServerCommands.Migration
         /// <summary>
         /// List of controls/tags that the implementing Converter class knows how to handle
         /// </summary>
-        IReadOnlyList<string> AvailableConversionTags { get; }
+        ReadOnlyCollection<string> AvailableConversionTags { get; }
 
         /// <summary>
         /// Method to implement which will be called by the ConverterAdapter class
         /// </summary>
         /// <param name="tagName"></param>
         /// <param name="tagNodeContent"></param>
-        /// <returns></returns>
-        string ConvertControlTag(string tagName, string tagNodeContent);
-    }
+        string ConvertControlTag(string tagName, string tagNodeContent)
 }
