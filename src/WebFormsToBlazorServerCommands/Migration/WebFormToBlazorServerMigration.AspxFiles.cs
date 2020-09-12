@@ -10,11 +10,16 @@ using CodeFactory.Formatting;
 using CodeFactory.DotNet.CSharp;
 using CodeFactory.Formatting.CSharp;
 using CodeFactory.SourceCode;
+using AngleSharp.Dom;
+using AngleSharp.Html.Parser;
+using AngleSharp;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
     public partial class WebFormToBlazorServerMigration
     {
+
+
         /// <summary>
         /// Migrates the existing aspx page files to a standard blazor page format.
         /// </summary>
@@ -241,6 +246,66 @@ namespace WebFormsToBlazorServerCommands.Migration
                 //Dumping the exception that occured directly into the status so the user can see what happened.
                 await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AspxPages, MessageTypeEnum.Error, $"The following unhandled error occured. '{unhandledError.Message}'");
             }
+        }
+
+
+
+        private static void ProcessSourceElement(Element elementToProcess, ref Element targetParentElement, ref HtmlParser htmlParser)
+        {
+            Element processedElement = null;
+            var converterAdapter = new ConverterAdapter();
+            converterAdapter.RegisterControlConverter(new AspxToBlazorControlConverter(converterAdapter));
+
+            try
+            {
+                //If this is an ASP:* control then call the migration code, append the *entire* migrated node, and return to the calling method.
+                if (elementToProcess.LocalName.ToLower().Contains("asp:"))
+                {
+                    var newNodeText = Task.Run(() => converterAdapter.MigrateTagControl(elementToProcess.LocalName, elementToProcess.OuterHtml)).Result;
+                    var convertedNodeObj = htmlParser.ParseFragment(newNodeText, null);
+
+                    //Need to remove the HTML/HEAD/BODY tags that get added by the parser
+                    var NodeToAppend = convertedNodeObj.GetElementsByTagName("BODY").First().FirstElementChild;
+
+                    //Append the element to the targetDocumentFragment, or the lastAppendedElement depending
+                    processedElement = targetParentElement.AppendElement(NodeToAppend) as Element;
+
+                    //We do *not* deal with any children of this element, as that is the responsibility of the MigratTagControl to deal with any children of the ASP control
+                    return;
+
+                }
+                else
+                {
+                    //if the current element has children,
+                    // - add it to the targetDocumentFragment without the children attached
+                    // - recursively call this method to deal with the children, passing in the new appended as the parent element to append children too
+                    if (elementToProcess.ChildElementCount > 0)
+                    {
+                        //Make sure that we are not doubling up the HTML and/or the BODY element - these get added by default from AngleSharp even to fragments.
+                        if (!elementToProcess.NodeName.ToLower().Equals(targetParentElement.NodeName.ToLower()))
+                        {
+                            processedElement = targetParentElement.AppendElement(elementToProcess.Clone(false) as Element);
+                        }
+                        foreach (Element item in elementToProcess.Children)
+                        {
+                            ProcessSourceElement(item, ref processedElement, ref htmlParser);
+                        }
+
+                    } else
+                    {
+                        targetParentElement.Append(elementToProcess.Clone(false));
+                    }
+
+                    return;
+
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+
         }
 
     }

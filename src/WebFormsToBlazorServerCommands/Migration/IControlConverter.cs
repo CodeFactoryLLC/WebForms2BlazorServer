@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
@@ -18,5 +19,6 @@ namespace WebFormsToBlazorServerCommands.Migration
         /// </summary>
         /// <param name="tagName"></param>
         /// <param name="tagNodeContent"></param>
-        string ConvertControlTag(string tagName, string tagNodeContent)
+        Task<string> ConvertControlTag(string tagName, string tagNodeContent);
+    }
 }

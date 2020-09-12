@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Documents;
 
 namespace WebFormsToBlazorServerCommands.Migration
@@ -12,10 +13,30 @@ namespace WebFormsToBlazorServerCommands.Migration
         private string _returnResult = string.Empty;
         private List<IControlConverter> _controlConverters = null;
 
-        public ConverterAdapter(List<IControlConverter> controlTagConverters)
+        public ConverterAdapter()
         {
-            _controlConverters = controlTagConverters;
         }
+
+        public bool RegisterControlConverter(IControlConverter converterObj)
+        {
+            try
+            {
+                if (_controlConverters == null)
+                {
+                    _controlConverters = new List<IControlConverter>();
+                }
+                _controlConverters.Add(converterObj);
+
+                return true;
+            }
+            catch (System.Exception)
+            {
+
+                return false;
+            }
+
+        }
+
 
         /// <summary>
         /// This method takes an incoming tag/control and its inclusive text represention and returns the converted text.
@@ -23,7 +44,7 @@ namespace WebFormsToBlazorServerCommands.Migration
         /// <param name="tagControlName"></param>
         /// <param name="tagNodeContent"></param>
         /// <returns>The converted text - otherwise a String.Empty if there is no converter registered for the passed in tagControlName</returns>
-        public string MigrateTagControl(string tagControlName, string tagNodeContent)
+        public async Task<string> MigrateTagControl(string tagControlName, string tagNodeContent)
         {
             string _returnResult = string.Empty;
 
@@ -31,20 +52,21 @@ namespace WebFormsToBlazorServerCommands.Migration
             {
                 if (string.IsNullOrEmpty(tagControlName) )
                 {
-                    return 
+                    return "nothing to convert.";
                 }
 
                 //iterate over all of the IControlConverters that have been registerd and find the 
                 //*first* one that knows how to convert the passed in tag
 
                 //check if control is available to be converted from IControlConverter
-                if (!_tagConverter.AvailableConversionTags.Contains(tagControlName))
+                foreach (var registerdConverter in _controlConverters)
                 {
-                    return tagNodeContent;
+                    if (registerdConverter.AvailableConversionTags.Contains(tagControlName.ToLower()))
+                    {
+                        //Call migration logic from specific class
+                        _returnResult = await registerdConverter.ConvertControlTag(tagControlName, tagNodeContent);
+                    }
                 }
-
-                //Call migration logic from specific class
-                _returnResult = _tagConverter.ConvertControlTag(tagControlName, tagNodeContent);
 
                 return _returnResult;
             }

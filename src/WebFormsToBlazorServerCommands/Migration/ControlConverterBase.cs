@@ -12,7 +12,7 @@ namespace WebFormsToBlazorServerCommands.Migration
     /// </summary>
     public class ControlConverterBase : IControlConverter
     {
-        private ITagControlConverter _adapterHost = null;
+        internal ITagControlConverter _adapterHost = null;
         internal List<string> _TagsICanConvert = null;
 
         public ControlConverterBase(ITagControlConverter adapterHost)
@@ -37,13 +37,13 @@ namespace WebFormsToBlazorServerCommands.Migration
         /// <param name="tagName"></param>
         /// <param name="tagNodeContent"></param>
         /// <returns></returns>
-        public string ConvertControlTag(string tagName, string tagNodeContent)
+        public virtual async Task<string> ConvertControlTag(string tagName, string tagNodeContent)
         {
             StringBuilder _result = new StringBuilder();
 
             try
             {
-
+                _result.Append(tagNodeContent);
 
                 return _result.ToString();
             }
