@@ -10,11 +10,17 @@ using CodeFactory.Formatting;
 using CodeFactory.DotNet.CSharp;
 using CodeFactory.Formatting.CSharp;
 using CodeFactory.SourceCode;
+using AngleSharp.Dom;
+using AngleSharp.Html.Parser;
+using AngleSharp;
+using System.ComponentModel.Design;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
     public partial class WebFormToBlazorServerMigration
     {
+
+
         /// <summary>
         /// Migrates the existing aspx page files to a standard blazor page format.
         /// </summary>
@@ -240,6 +246,60 @@ namespace WebFormsToBlazorServerCommands.Migration
             {
                 //Dumping the exception that occured directly into the status so the user can see what happened.
                 await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AspxPages, MessageTypeEnum.Error, $"The following unhandled error occured. '{unhandledError.Message}'");
+            }
+        }
+
+
+        /// <summary>
+        /// This method is used to send an Element through any registered ControlConverter adapters and get back 
+        /// the migrated text from the AdapterHost.
+        /// </summary>
+        /// <param name="elementToProcess"></param>
+        /// <returns>String</returns>
+        private async Task<string> ProcessSourceElement(Element elementToProcess)
+        {
+            Element processedElement = null;
+            StringBuilder processedHTML = new StringBuilder();
+            var converterAdapter = new ConverterAdapter();
+            converterAdapter.RegisterControlConverter(new AspxToBlazorControlConverter(converterAdapter));
+
+            var htmlParser = new AngleSharp.Html.Parser.HtmlParser();
+            
+            try
+            {
+                //If this is an ASP:* control then call the migration code, append the *entire* migrated node, and return to the calling method.
+                if (elementToProcess.LocalName.ToLower().Contains("asp:"))
+                {
+                    var newNodeText = Task.Run(() => converterAdapter.MigrateTagControl(elementToProcess.LocalName, elementToProcess.OuterHtml)).Result;
+
+                    //We do *not* deal with any children of this element, as that is the responsibility of the MigratTagControl to deal with any children of the ASP control
+                    return newNodeText;
+                }
+                else
+                {
+                    //if the current element has children,
+                    // - add it to the targetDocumentFragment without the children attached
+                    // - recursively call this method to deal with the children, passing in the new appended as the parent element to append children too
+                    if (elementToProcess.ChildElementCount > 0)
+                    {
+                        processedElement = elementToProcess.Clone(false) as Element;
+                        foreach (Element item in elementToProcess.Children)
+                        {
+                            var newElement = htmlParser.ParseFragment(await ProcessSourceElement(item), processedElement);
+                            processedElement.Append(newElement.ToArray());
+                        }
+                        processedHTML.Append(processedElement.OuterHtml);
+                    } else
+                    {
+                        processedHTML.Append((elementToProcess.Clone(false) as Element).OuterHtml);
+                    }
+
+                    return processedHTML.ToString();
+                }
+            }
+            catch (Exception)
+            {
+                throw;
             }
         }
 

@@ -13,6 +13,8 @@ using AngleSharp.Html.Parser;
 using CodeFactory.DotNet.CSharp;
 using Newtonsoft.Json;
 using WebFormsToBlazorServerCommands.Templates;
+using CodeFactory.Formatting.CSharp;
+using System.Text;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
@@ -176,7 +178,6 @@ namespace WebFormsToBlazorServerCommands.Migration
 
                 //Drop the pageHeaderData into the Dictionary for later processing by any downstream T4 factories
                 conversionData.Add("HeaderData", pageHeaderData);
-                //just some status text for the dialog ( need to convert this to events )
 
                 //Getting the source code from the code behind file provided.
                 var codeSource = sourceCodeBehind?.SourceCode;
@@ -210,7 +211,7 @@ namespace WebFormsToBlazorServerCommands.Migration
 
                         //Adding the current class from the code behind into the model store for processing.
                         modelStore.SetModel(codeSource.Classes.FirstOrDefault());
-                        
+
                         //Processing the T4 factory and loading the source code.
                         var codeBehindFormattedSourceCode =
                             Templates.PageCodeBehind.GenerateSource(modelStore, conversionData);
@@ -244,8 +245,8 @@ namespace WebFormsToBlazorServerCommands.Migration
             }
             catch (Exception unhandledError)
             {
-                 await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AspxPages, MessageTypeEnum.Error,
-                    $"The following unhandled error occured while trying to convert the aspx page. '{unhandledError.Message}'");
+                await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AspxPages, MessageTypeEnum.Error,
+                   $"The following unhandled error occured while trying to convert the aspx page. '{unhandledError.Message}'");
             }
         }
 
@@ -449,64 +450,60 @@ namespace WebFormsToBlazorServerCommands.Migration
             var context = BrowsingContext.New(config);
             var scratchSource = sourceAspCode;
             var model = await context.OpenAsync(req => req.Content(sourceAspCode));
-            var parser = context.GetService<HtmlParser>();
+            StringBuilder migratedSource = new StringBuilder();
 
-            var aspContentTags = model.All.Where(p => p.LocalName.ToLower().Equals("asp:content"));
-            if (aspContentTags.Any())
+            try
             {
-                result.Add("ContentPlaceHolderID", aspContentTags.First().Attributes.Select(p => p.Name.Equals("ContentPlaceHolderID")).First().ToString());
-                //There should only be a single asp:Content tag per aspx page
-            }
+                //Deal with HTML, HEAD and BODY tags (most *.aspx pages won't have these - but we still have to manage those that do)
+                //Look through the incoming sourceAspCode parameter and see if we have any of those three tags present.
+                var htmlTag = System.Text.RegularExpressions.Regex.Match(sourceAspCode, @"<HTML.*?>(.|\n)*?<\/HTML>", RegexOptions.IgnoreCase);
+                var headTag = System.Text.RegularExpressions.Regex.Match(sourceAspCode, @"<HEAD.*?>(.|\n)*?<\/HEAD>", RegexOptions.IgnoreCase);
+                var bodyTag = System.Text.RegularExpressions.Regex.Match(sourceAspCode, @"<BODY>(.|\n)*?<\/BODY>", RegexOptions.IgnoreCase);
 
-            //Deal with asp:FormView tag
-            var aspFormTags = model.All.Where(p => p.LocalName.ToLower().Equals("asp:formview")).ToList();
-            foreach (var formObj in aspFormTags)
-            {
-                var newNode = parser.ParseFragment($"<EditForm Model={formObj.GetAttribute("ItemType")} OnValidSubmit={formObj.GetAttribute("SelectMethod")}> </EditForm>", formObj);
-                //check for ItemTemplate tag and remove it.  There isn't one in Blazor/Razor
-                newNode.FirstOrDefault().AppendNodes(
-                    formObj.Children.Any(p => p.TagName.ToLower().Equals("itemtemplate"))
-                        ? formObj.Children.First(c => c.TagName.ToLower().Equals("itemtemplate")).Children.ToArray()
-                        : formObj.ChildNodes.ToArray());
-                formObj.Replace(newNode.ToArray());
-
-                result.Add("ItemType", formObj.GetAttribute("ItemType"));
-                result.Add("SelectMethod", formObj.GetAttribute("SelectMethod"));
-
-                scratchSource = model.All.First(p => p.LocalName.ToLower().Equals("body")).InnerHtml;
-            }
-
-            //Look for any tags that have 'asp:' in them -- then drop the 'asp:' from it.
-            var aspHelperTags = model.All.Where(p => p.LocalName.ToLower().Contains("asp:")).ToList();
-            bool hasContentTag = false;
-            foreach (var tagObj in aspHelperTags)
-            {
-                if (tagObj.LocalName.ToLower().Contains("asp:content "))
+                foreach (Element child in model.Children)
                 {
-                    hasContentTag = true;
-                    continue;
+                    //The first element will always be an HTML element as that gets added by the AngleSharp parser
+                    
+                    //Process the children which will be a HEAD tag and a BODY tag, at a minimum as added by the AngleSharp parser
+                    //The ProcessSourceElement will append the child node to the target and call itself recursively for any children of the child.
+                    foreach (Element item in child.Children)
+                    {
+                        if (item.NodeName.ToLower().Equals("head"))
+                        {
+                            //just take the value of the headTag Regex match from earlier in this method (there are no asp:* controls of any kind that live in the 
+                            //HEAD tag - so we can just copy it down to here)
+                            migratedSource.Append(headTag.Value);
+                        }
+                        if (item.NodeName.ToLower().Equals("body"))
+                        {
+                            //We go ahead and process this element.  Any children of the tag are actually handled by the ProcessSourceElement() method
+                            var migratedBodyElement = await ProcessSourceElement(item);
+                            if (!bodyTag.Success)
+                            {
+                                var matches = Regex.Match(migratedBodyElement, @"<body>([\S\s]*)<\/body>", RegexOptions.IgnoreCase);
+                                migratedSource.Append(matches.Groups[1].Value);
+                            } else
+                            {
+                                migratedSource.Append(migratedBodyElement);
+                            }
+                            
+                        }
+                    }
                 }
 
-                //Removing the asp: tag from the html
-                var cleanedHtml = Regex.Replace(tagObj.OuterHtml, "asp:", "", RegexOptions.IgnoreCase);
+                if (htmlTag.Success)
+                {
+                    migratedSource.Insert(0, @"<HTML>");
+                    migratedSource.Append(@"</HTML>");
+                }
 
-                //Having the cleanHtml reloaded into the parser.
-                var replacementTagNode = parser.ParseFragment(cleanedHtml, tagObj);
-
-                //Injecting the cleaned up parsed content back into the target tag in the dom. 
-                tagObj.Replace(replacementTagNode.ToArray());
-
-                //var replacementTagNode =
-                //        parser.ParseFragment(tagObj.OuterHtml.Replace("asp:", ""), tagObj);
-                //tagObj.Replace(replacementTagNode.ToArray());
+                result.Add("source", sourceAspCode);
+                result.Add("alteredSource", migratedSource.ToString());
             }
-
-            scratchSource = hasContentTag
-                    ? model.All.First(p => p.LocalName.ToLower().Equals("asp:content")).InnerHtml
-                    : model.All.First(p => p.LocalName.ToLower().Equals("body")).InnerHtml;
-
-            result.Add("source", sourceAspCode);
-            result.Add("alteredSource", scratchSource);
+            catch (Exception ex)
+            {
+                throw;
+            }
 
             return result;
         }
@@ -519,7 +516,8 @@ namespace WebFormsToBlazorServerCommands.Migration
         /// <returns>The updated content.</returns>
         private async Task<String> SetRazorPageDirectives(string fileName, Dictionary<string, string> sourceData)
         {
-            String result = String.Empty;
+            //String result = String.Empty;
+            SourceFormatter result = new SourceFormatter();
 
             try
             {
@@ -528,16 +526,18 @@ namespace WebFormsToBlazorServerCommands.Migration
                 Match match = regex.Match(pageData);
                 string layout = match.Value;
                 layout = layout.Replace(".", ""); //remove the old-style Site.Master layout to read SiteMaster
-                regex = new Regex(@"(?<=\bInherits="")[^""]*");
-                match = regex.Match(pageData);
-                string inherits =
-                result = $"@page \"/{fileName}\"\r\n";
+
+                result.AppendCode($"@page \"/{fileName}\" ");
                 if (layout.Length > 0)
                 {
                     //Making sure the ~ gets removed from directives
-                    result += $"@layout { layout.Replace("~/", "")}\r\n";
+                    result.AppendCodeLine(0, $"@layout { layout.Replace("~/", "")}");
                 }
-                result += $"@inherits {fileName}Base\r\n\r\n {sourceData["alteredSource"]}";
+                //result += $"@inherits {fileName}Base\r\n\r\n {sourceData["alteredSource"]}";
+
+                result.AppendCodeLine(0);
+                result.AppendCodeLine(0);
+                result.AppendCodeLine(0, $"{sourceData["alteredSource"]}");
             }
             catch (Exception unhandledError)
             {
@@ -545,7 +545,7 @@ namespace WebFormsToBlazorServerCommands.Migration
                     $"The following unhandled error occured while setting the razor page directives in the file {fileName}. '{unhandledError.Message}'");
             }
 
-            return result;
+            return result.ReturnSource();
         }
 
         #endregion
