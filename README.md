@@ -23,4 +23,4 @@ This automation template was built using the [CodeFactory SDK](https://www.nuget
   - Migrate over business/app logic (any *.cs files that are *not* an aspx/asax/ascx)
 
 ## Links to Guidance
-For technical explanations of each file/class/command in this Automation Template please see the [guidance](/guidance/guidance.md) page for further information.
+For technical explanations of each file/class/command in this Automation Template please see the [guidance](./guidance/Guidance.md) page for further information.
