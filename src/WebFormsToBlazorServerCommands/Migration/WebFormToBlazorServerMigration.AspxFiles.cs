@@ -13,6 +13,7 @@ using CodeFactory.SourceCode;
 using AngleSharp.Dom;
 using AngleSharp.Html.Parser;
 using AngleSharp;
+using System.ComponentModel.Design;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
@@ -249,30 +250,30 @@ namespace WebFormsToBlazorServerCommands.Migration
         }
 
 
-
-        private static void ProcessSourceElement(Element elementToProcess, ref Element targetParentElement, ref HtmlParser htmlParser)
+        /// <summary>
+        /// This method is used to send an Element through any registered ControlConverter adapters and get back 
+        /// the migrated text from the AdapterHost.
+        /// </summary>
+        /// <param name="elementToProcess"></param>
+        /// <returns>String</returns>
+        private async Task<string> ProcessSourceElement(Element elementToProcess)
         {
             Element processedElement = null;
+            StringBuilder processedHTML = new StringBuilder();
             var converterAdapter = new ConverterAdapter();
             converterAdapter.RegisterControlConverter(new AspxToBlazorControlConverter(converterAdapter));
 
+            var htmlParser = new AngleSharp.Html.Parser.HtmlParser();
+            
             try
             {
                 //If this is an ASP:* control then call the migration code, append the *entire* migrated node, and return to the calling method.
                 if (elementToProcess.LocalName.ToLower().Contains("asp:"))
                 {
                     var newNodeText = Task.Run(() => converterAdapter.MigrateTagControl(elementToProcess.LocalName, elementToProcess.OuterHtml)).Result;
-                    var convertedNodeObj = htmlParser.ParseFragment(newNodeText, null);
-
-                    //Need to remove the HTML/HEAD/BODY tags that get added by the parser
-                    var NodeToAppend = convertedNodeObj.GetElementsByTagName("BODY").First().FirstElementChild;
-
-                    //Append the element to the targetDocumentFragment, or the lastAppendedElement depending
-                    processedElement = targetParentElement.AppendElement(NodeToAppend) as Element;
 
                     //We do *not* deal with any children of this element, as that is the responsibility of the MigratTagControl to deal with any children of the ASP control
-                    return;
-
+                    return newNodeText;
                 }
                 else
                 {
@@ -281,31 +282,25 @@ namespace WebFormsToBlazorServerCommands.Migration
                     // - recursively call this method to deal with the children, passing in the new appended as the parent element to append children too
                     if (elementToProcess.ChildElementCount > 0)
                     {
-                        //Make sure that we are not doubling up the HTML and/or the BODY element - these get added by default from AngleSharp even to fragments.
-                        if (!elementToProcess.NodeName.ToLower().Equals(targetParentElement.NodeName.ToLower()))
-                        {
-                            processedElement = targetParentElement.AppendElement(elementToProcess.Clone(false) as Element);
-                        }
+                        processedElement = elementToProcess.Clone(false) as Element;
                         foreach (Element item in elementToProcess.Children)
                         {
-                            ProcessSourceElement(item, ref processedElement, ref htmlParser);
+                            var newElement = htmlParser.ParseFragment(await ProcessSourceElement(item), processedElement);
+                            processedElement.Append(newElement.ToArray());
                         }
-
+                        processedHTML.Append(processedElement.OuterHtml);
                     } else
                     {
-                        targetParentElement.Append(elementToProcess.Clone(false));
+                        processedHTML.Append((elementToProcess.Clone(false) as Element).OuterHtml);
                     }
 
-                    return;
-
+                    return processedHTML.ToString();
                 }
             }
             catch (Exception)
             {
-
                 throw;
             }
-
         }
 
     }

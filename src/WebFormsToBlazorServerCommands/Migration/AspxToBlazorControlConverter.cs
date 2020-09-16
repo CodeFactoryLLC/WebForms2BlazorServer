@@ -126,7 +126,6 @@ namespace WebFormsToBlazorServerCommands.Migration
 
             try
             {
-
                 var editFormNode = model.All.Where(p => p.LocalName.ToLower().Equals("asp:formview")).FirstOrDefault();
                 var newNode = parser.ParseFragment($"<EditForm Model={editFormNode.GetAttribute("ItemType")} OnValidSubmit={editFormNode.GetAttribute("SelectMethod")}></EditForm>", editFormNode);
 
@@ -143,7 +142,6 @@ namespace WebFormsToBlazorServerCommands.Migration
                 foreach (var formObj in aspFormTags)
                 {
                     var migratedControlText = await _adapterHost.MigrateTagControl(formObj.NodeName, formObj.OuterHtml);
-
                     var tempNode = parser.ParseFragment(migratedControlText, null);
 
                     //ParseFragment always adds on a HTML & BODY tags, at least with this call setup.  We need to pull out *just* the element that we have migrated.
@@ -197,7 +195,6 @@ namespace WebFormsToBlazorServerCommands.Migration
             try
             {
                 var model = await _angleSharpContext.OpenAsync(req => req.Content(nodeContent));
-
                 var contentControlObj = model.Descendents<Element>().First(c => c.TagName.ToLower().Equals("asp:content"));
 
                 //send any child asp:* controls to be converted by the a call back out to the adapterHosting class.
@@ -205,7 +202,6 @@ namespace WebFormsToBlazorServerCommands.Migration
                 foreach (var formObj in aspFormTags)
                 {
                     var migratedControlText = await _adapterHost.MigrateTagControl(formObj.NodeName, formObj.OuterHtml);
-
                     var tempNode = parser.ParseFragment(migratedControlText, null);
 
                     //ParseFragment always adds on a HTML & BODY tags, at least with this call setup.  We need to pull out *just* the element that we have migrated.

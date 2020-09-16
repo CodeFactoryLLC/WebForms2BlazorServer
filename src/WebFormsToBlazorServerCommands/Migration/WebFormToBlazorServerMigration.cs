@@ -14,6 +14,7 @@ using CodeFactory.DotNet.CSharp;
 using Newtonsoft.Json;
 using WebFormsToBlazorServerCommands.Templates;
 using CodeFactory.Formatting.CSharp;
+using System.Text;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
@@ -177,7 +178,6 @@ namespace WebFormsToBlazorServerCommands.Migration
 
                 //Drop the pageHeaderData into the Dictionary for later processing by any downstream T4 factories
                 conversionData.Add("HeaderData", pageHeaderData);
-                //just some status text for the dialog ( need to convert this to events )
 
                 //Getting the source code from the code behind file provided.
                 var codeSource = sourceCodeBehind?.SourceCode;
@@ -450,89 +450,60 @@ namespace WebFormsToBlazorServerCommands.Migration
             var context = BrowsingContext.New(config);
             var scratchSource = sourceAspCode;
             var model = await context.OpenAsync(req => req.Content(sourceAspCode));
-            var parser = context.GetService<HtmlParser>();
-            var targetDOM = model.CreateDocumentFragment();
+            StringBuilder migratedSource = new StringBuilder();
 
-            var testElementsDesc = model.Descendents<IElement>();
-            var testNodesDesc = model.Descendents();
-            Element targetParentElement = null;
-
-            var domTree = model.Children;
-            
-            foreach (Element child in domTree)
+            try
             {
-                //append a clone of this element to the targetDOM
-                targetParentElement = targetDOM.AppendElement(child.Clone(false) as Element);
+                //Deal with HTML, HEAD and BODY tags (most *.aspx pages won't have these - but we still have to manage those that do)
+                //Look through the incoming sourceAspCode parameter and see if we have any of those three tags present.
+                var htmlTag = System.Text.RegularExpressions.Regex.Match(sourceAspCode, @"<HTML.*?>(.|\n)*?<\/HTML>", RegexOptions.IgnoreCase);
+                var headTag = System.Text.RegularExpressions.Regex.Match(sourceAspCode, @"<HEAD.*?>(.|\n)*?<\/HEAD>", RegexOptions.IgnoreCase);
+                var bodyTag = System.Text.RegularExpressions.Regex.Match(sourceAspCode, @"<BODY>(.|\n)*?<\/BODY>", RegexOptions.IgnoreCase);
 
-                //Process any children that this element may have, 
-                //The ProcessSourceElement will append the child node to the target and call itself recursively for any children of the child.
-                foreach (Element item in child.Children)
+                foreach (Element child in model.Children)
                 {
-                    ProcessSourceElement(item, ref targetParentElement, ref parser);
+                    //The first element will always be an HTML element as that gets added by the AngleSharp parser
+                    
+                    //Process the children which will be a HEAD tag and a BODY tag, at a minimum as added by the AngleSharp parser
+                    //The ProcessSourceElement will append the child node to the target and call itself recursively for any children of the child.
+                    foreach (Element item in child.Children)
+                    {
+                        if (item.NodeName.ToLower().Equals("head"))
+                        {
+                            //just take the value of the headTag Regex match from earlier in this method (there are no asp:* controls of any kind that live in the 
+                            //HEAD tag - so we can just copy it down to here)
+                            migratedSource.Append(headTag.Value);
+                        }
+                        if (item.NodeName.ToLower().Equals("body"))
+                        {
+                            //We go ahead and process this element.  Any children of the tag are actually handled by the ProcessSourceElement() method
+                            var migratedBodyElement = await ProcessSourceElement(item);
+                            if (!bodyTag.Success)
+                            {
+                                var matches = Regex.Match(migratedBodyElement, @"<body>([\S\s]*)<\/body>", RegexOptions.IgnoreCase);
+                                migratedSource.Append(matches.Groups[1].Value);
+                            } else
+                            {
+                                migratedSource.Append(migratedBodyElement);
+                            }
+                            
+                        }
+                    }
                 }
 
+                if (htmlTag.Success)
+                {
+                    migratedSource.Insert(0, @"<HTML>");
+                    migratedSource.Append(@"</HTML>");
+                }
+
+                result.Add("source", sourceAspCode);
+                result.Add("alteredSource", migratedSource.ToString());
             }
-
-
-            //var aspContentTags = model.All.Where(p => p.LocalName.ToLower().Equals("asp:content"));
-            //if (aspContentTags.Any())
-            //{
-            //    result.Add("ContentPlaceHolderID", aspContentTags.First().Attributes.Select(p => p.Name.Equals("ContentPlaceHolderID")).First().ToString());
-            //    //There should only be a single asp:Content tag per aspx page
-            //}
-
-            ////Deal with asp:FormView tag
-            //var aspFormTags = model.All.Where(p => p.LocalName.ToLower().Equals("asp:formview")).ToList();
-            //foreach (var formObj in aspFormTags)
-            //{
-            //    var newNode = parser.ParseFragment($"<EditForm Model={formObj.GetAttribute("ItemType")} OnValidSubmit={formObj.GetAttribute("SelectMethod")}> </EditForm>", formObj);
-            //    //check for ItemTemplate tag and remove it.  There isn't one in Blazor/Razor
-            //    newNode.FirstOrDefault().AppendNodes(
-            //        formObj.Children.Any(p => p.TagName.ToLower().Equals("itemtemplate"))
-            //            ? formObj.Children.First(c => c.TagName.ToLower().Equals("itemtemplate")).Children.ToArray()
-            //            : formObj.ChildNodes.ToArray());
-            //    formObj.Replace(newNode.ToArray());
-
-            //    result.Add("ItemType", formObj.GetAttribute("ItemType"));
-            //    result.Add("SelectMethod", formObj.GetAttribute("SelectMethod"));
-
-            //    scratchSource = model.All.First(p => p.LocalName.ToLower().Equals("body")).InnerHtml;
-            //}
-
-            ////Look for any tags that have 'asp:' in them -- then drop the 'asp:' from it.
-            //var aspHelperTags = model.All.Where(p => p.LocalName.ToLower().Contains("asp:")).ToList();
-            //bool hasContentTag = false;
-            //foreach (var tagObj in aspHelperTags)
-            //{
-            //    if (tagObj.LocalName.ToLower().Contains("asp:content "))
-            //    {
-            //        hasContentTag = true;
-            //        continue;
-            //    }
-
-            //    //Removing the asp: tag from the html
-            //    var cleanedHtml = Regex.Replace(tagObj.OuterHtml, "asp:", "", RegexOptions.IgnoreCase);
-
-            //    //Having the cleanHtml reloaded into the parser.
-            //    var replacementTagNode = parser.ParseFragment(cleanedHtml, tagObj);
-
-            //    //Injecting the cleaned up parsed content back into the target tag in the dom. 
-            //    tagObj.Replace(replacementTagNode.ToArray());
-
-            //    //var replacementTagNode =
-            //    //        parser.ParseFragment(tagObj.OuterHtml.Replace("asp:", ""), tagObj);
-            //    //tagObj.Replace(replacementTagNode.ToArray());
-            //}
-
-            //scratchSource = hasContentTag
-            //        ? model.All.First(p => p.LocalName.ToLower().Equals("asp:content")).InnerHtml
-            //        : model.All.First(p => p.LocalName.ToLower().Equals("body")).InnerHtml;
-
-            scratchSource = targetDOM.Descendents<Element>().First(p => p.NodeName.ToLower().Equals("body")).InnerHtml;
-            //scratchSource = model.All.First(p => p.LocalName.ToLower().Equals("body")).InnerHtml;
-
-            result.Add("source", sourceAspCode);
-            result.Add("alteredSource", scratchSource);
+            catch (Exception ex)
+            {
+                throw;
+            }
 
             return result;
         }
