@@ -1,3 +1,9 @@
-# SetupBlazorProjec Project Command
+# SetupBlazorProject.cs Project Command file
 
-[in progress]
+## Overview
+
+## Fields
+
+## Constrcutor
+
+## Methods
