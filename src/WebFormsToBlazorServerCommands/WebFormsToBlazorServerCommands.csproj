@@ -69,6 +69,7 @@
       <DependentUpon>MigrateWebForm.xaml</DependentUpon>
     </Compile>
     <Compile Include="Migration\AspxToBlazorControlConverter.cs" />
+    <Compile Include="Migration\ControlConverterBase.cs" />
     <Compile Include="Migration\ConverterAdapter.cs" />
     <Compile Include="Migration\IControlConverter.cs" />
     <Compile Include="Migration\IMigrationStatusUpdate.cs" />
