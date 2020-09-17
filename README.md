@@ -24,3 +24,7 @@ This automation template was built using the [CodeFactory SDK](https://www.nuget
 
 ## Links to Guidance
 For technical explanations of each file/class/command in this Automation Template please see the [guidance](./guidance/Guidance.md) page for further information.
+
+## Known Limitations of this Automation Template
+- Any logic found in the source *.aspx.cs code-behind file will get ported over to a new code-behind file for the blazor component, but in a commented-out format.  This code will need to be manually edited to ensure that is complies with the Blazor framework.
+- Any business logic classes, `*.cs`, files that get moved over from the bulk migration option will *not* be modified beyond setting the new namespaces for the Target Blazor app.  Please review the code to make certain that all dependencies and/or namespaces are valid.
