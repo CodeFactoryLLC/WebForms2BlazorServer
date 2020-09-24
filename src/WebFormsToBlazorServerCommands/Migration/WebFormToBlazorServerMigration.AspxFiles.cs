@@ -10,10 +10,9 @@ using CodeFactory.Formatting;
 using CodeFactory.DotNet.CSharp;
 using CodeFactory.Formatting.CSharp;
 using CodeFactory.SourceCode;
-using AngleSharp.Dom;
-using AngleSharp.Html.Parser;
-using AngleSharp;
+
 using System.ComponentModel.Design;
+using HtmlAgilityPack;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
@@ -256,21 +255,21 @@ namespace WebFormsToBlazorServerCommands.Migration
         /// </summary>
         /// <param name="elementToProcess"></param>
         /// <returns>String</returns>
-        private async Task<string> ProcessSourceElement(Element elementToProcess)
+        private async Task<string> ProcessSourceElement(HtmlNode elementToProcess)
         {
-            Element processedElement = null;
+            HtmlNode processedElement = null;
             StringBuilder processedHTML = new StringBuilder();
             var converterAdapter = new ConverterAdapter();
             converterAdapter.RegisterControlConverter(new AspxToBlazorControlConverter(converterAdapter));
 
-            var htmlParser = new AngleSharp.Html.Parser.HtmlParser();
+            var htmlParser = new HtmlDocument();
             
             try
             {
                 //If this is an ASP:* control then call the migration code, append the *entire* migrated node, and return to the calling method.
-                if (elementToProcess.LocalName.ToLower().Contains("asp:"))
+                if (elementToProcess.Name.ToLower().Contains("asp:"))
                 {
-                    var newNodeText = Task.Run(() => converterAdapter.MigrateTagControl(elementToProcess.LocalName, elementToProcess.OuterHtml)).Result;
+                    var newNodeText = await converterAdapter.MigrateTagControl(elementToProcess.Name, elementToProcess.OuterHtml);
 
                     //We do *not* deal with any children of this element, as that is the responsibility of the MigratTagControl to deal with any children of the ASP control
                     return newNodeText;
@@ -280,26 +279,29 @@ namespace WebFormsToBlazorServerCommands.Migration
                     //if the current element has children,
                     // - add it to the targetDocumentFragment without the children attached
                     // - recursively call this method to deal with the children, passing in the new appended as the parent element to append children too
-                    if (elementToProcess.ChildElementCount > 0)
+                    if (elementToProcess.ChildNodes.Count > 0)
                     {
-                        processedElement = elementToProcess.Clone(false) as Element;
-                        foreach (Element item in elementToProcess.Children)
+                        //shallow clone
+                        processedElement = elementToProcess.CloneNode(false);
+                        
+                        foreach (var item in elementToProcess.ChildNodes)
                         {
-                            var newElement = htmlParser.ParseFragment(await ProcessSourceElement(item), processedElement);
-                            processedElement.Append(newElement.ToArray());
+                            var migratedValue = await ProcessSourceElement(item);
+                            var migratedChild = HtmlNode.CreateNode( migratedValue.Length > 0 ? migratedValue : " " );
+                            processedElement.AppendChild(migratedChild);
                         }
                         processedHTML.Append(processedElement.OuterHtml);
                     } else
                     {
-                        processedHTML.Append((elementToProcess.Clone(false) as Element).OuterHtml);
+                        processedHTML.Append((elementToProcess.Clone()).OuterHtml);
                     }
-
+                    
                     return processedHTML.ToString();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                throw;
+                throw ex;
             }
         }
 

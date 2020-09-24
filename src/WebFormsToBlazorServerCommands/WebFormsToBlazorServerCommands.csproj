@@ -36,6 +36,9 @@
     <PackageReference Include="CodeFactory.Formatting.CSharp">
       <Version>0.90.202181</Version>
     </PackageReference>
+    <PackageReference Include="HtmlAgilityPack">
+      <Version>1.11.24</Version>
+    </PackageReference>
     <PackageReference Include="Newtonsoft.Json">
       <Version>12.0.3</Version>
     </PackageReference>
@@ -46,9 +49,6 @@
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
-    <PackageReference Include="AngleSharp">
-      <Version>1.0.0-alpha-827</Version>
-    </PackageReference>
     <PackageReference Include="CodeFactorySDK">
       <Version>1.0.202021</Version>
     </PackageReference>
@@ -68,8 +68,8 @@
     <Compile Include="Dialogs\MigrateWebForm.xaml.cs">
       <DependentUpon>MigrateWebForm.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Migration\AspxToBlazorControlConverter.cs" />
-    <Compile Include="Migration\ControlConverterBase.cs" />
+    <Compile Include="Migration\Adapters\AspxToBlazorControlConverter.cs" />
+    <Compile Include="Migration\Adapters\ControlConverterBase.cs" />
     <Compile Include="Migration\ConverterAdapter.cs" />
     <Compile Include="Migration\IControlConverter.cs" />
     <Compile Include="Migration\IMigrationStatusUpdate.cs" />

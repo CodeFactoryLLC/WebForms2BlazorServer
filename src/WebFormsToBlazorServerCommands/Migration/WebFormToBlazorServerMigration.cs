@@ -6,15 +6,10 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Xml;
-using AngleSharp;
-using AngleSharp.Dom;
-using AngleSharp.Html.Parser;
 using CodeFactory.DotNet.CSharp;
-using Newtonsoft.Json;
-using WebFormsToBlazorServerCommands.Templates;
 using CodeFactory.Formatting.CSharp;
 using System.Text;
+using HtmlAgilityPack;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
@@ -444,13 +439,9 @@ namespace WebFormsToBlazorServerCommands.Migration
         private async Task<Dictionary<string, string>> ReplaceAspControls(string sourceAspCode)
         {
             Dictionary<string, string> result = new Dictionary<string, string>();
-
-            //set anglesharp
-            var config = AngleSharp.Configuration.Default;
-            var context = BrowsingContext.New(config);
-            var scratchSource = sourceAspCode;
-            var model = await context.OpenAsync(req => req.Content(sourceAspCode));
             StringBuilder migratedSource = new StringBuilder();
+            var docFrag = new HtmlAgilityPack.HtmlDocument();
+            docFrag.LoadHtml(sourceAspCode);
 
             try
             {
@@ -460,41 +451,52 @@ namespace WebFormsToBlazorServerCommands.Migration
                 var headTag = System.Text.RegularExpressions.Regex.Match(sourceAspCode, @"<HEAD.*?>(.|\n)*?<\/HEAD>", RegexOptions.IgnoreCase);
                 var bodyTag = System.Text.RegularExpressions.Regex.Match(sourceAspCode, @"<BODY>(.|\n)*?<\/BODY>", RegexOptions.IgnoreCase);
 
-                foreach (Element child in model.Children)
+                foreach (var child in docFrag.DocumentNode.ChildNodes)
                 {
-                    //The first element will always be an HTML element as that gets added by the AngleSharp parser
-                    
-                    //Process the children which will be a HEAD tag and a BODY tag, at a minimum as added by the AngleSharp parser
-                    //The ProcessSourceElement will append the child node to the target and call itself recursively for any children of the child.
-                    foreach (Element item in child.Children)
+                    //New HtmlAgilityPack parsing which does *not* add HTML/HEAD/BODY etc tags to the source
+                    if (child.Name.ToLower().Equals("html"))
                     {
-                        if (item.NodeName.ToLower().Equals("head"))
-                        {
-                            //just take the value of the headTag Regex match from earlier in this method (there are no asp:* controls of any kind that live in the 
-                            //HEAD tag - so we can just copy it down to here)
-                            migratedSource.Append(headTag.Value);
-                        }
-                        if (item.NodeName.ToLower().Equals("body"))
-                        {
-                            //We go ahead and process this element.  Any children of the tag are actually handled by the ProcessSourceElement() method
-                            var migratedBodyElement = await ProcessSourceElement(item);
-                            if (!bodyTag.Success)
-                            {
-                                var matches = Regex.Match(migratedBodyElement, @"<body>([\S\s]*)<\/body>", RegexOptions.IgnoreCase);
-                                migratedSource.Append(matches.Groups[1].Value);
-                            } else
-                            {
-                                migratedSource.Append(migratedBodyElement);
-                            }
-                            
-                        }
+                        migratedSource.Append(await ProcessSourceElement(child));
+                        continue;
                     }
-                }
 
-                if (htmlTag.Success)
-                {
-                    migratedSource.Insert(0, @"<HTML>");
-                    migratedSource.Append(@"</HTML>");
+                    if (child.Name.ToLower().Equals("head"))
+                    {
+                        //just take the value of the headTag Regex match from earlier in this method (there are no asp:* controls of any kind that live in the 
+                        //HEAD tag - so we can just copy it down to here)
+                        migratedSource.Append(await ProcessSourceElement(child));
+                        continue;
+                    }
+                    if (child.Name.ToLower().Equals("body"))
+                    {
+                        //We go ahead and process this element.  Any children of the tag are actually handled by the ProcessSourceElement() method
+                        var migratedBodyElement = await ProcessSourceElement(child);
+                        if (!bodyTag.Success)
+                        {
+                            var matches = Regex.Match(migratedBodyElement, @"<body>([\S\s]*)<\/body>", RegexOptions.IgnoreCase);
+                            migratedSource.Append(matches.Groups[1].Value);
+                        }
+                        else
+                        {
+                            migratedSource.Append(migratedBodyElement);
+                        }
+                        continue;
+                    }
+
+                    //Its just a vanilla text sitting outside of a elementNode, append it.
+                    if (!child.NodeType.Equals(HtmlNodeType.Element))
+                    {
+                        migratedSource.Append(child.OuterHtml);
+                        continue;
+                    }
+
+                    //Its an element Node - process it.
+                    if (child.NodeType.Equals(HtmlNodeType.Element))
+                    {
+                        migratedSource.Append(await ProcessSourceElement(child));
+                        continue;
+                    }
+
                 }
 
                 result.Add("source", sourceAspCode);
