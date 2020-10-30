@@ -13,6 +13,7 @@ using CodeFactory.SourceCode;
 
 using System.ComponentModel.Design;
 using HtmlAgilityPack;
+using CodeFactory.Markup.Adapter;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
@@ -74,9 +75,13 @@ namespace WebFormsToBlazorServerCommands.Migration
                 var pages = pagesFolderModels.Where(m => m.ModelType == VisualStudioModelType.Document)
                     .Cast<VsDocument>();
 
+                int collect = 0;
+
                 //Processing each aspx file.
                 foreach (VsDocument aspxFile in aspxFiles)
                 {
+                    collect++;
+
                     //Getting the formatted names that will be used in migrating the ASPX file and its code behind to the blazor project.
                     string targetFileNameNoExtension = Path.GetFileNameWithoutExtension(aspxFile.Path);
                     string aspxCodeBehindFileName = $"{targetFileNameNoExtension}.aspx.cs";
@@ -137,6 +142,12 @@ namespace WebFormsToBlazorServerCommands.Migration
 
                     //Converting the aspx page and the code behind file if it was found.
                     await ConvertAspxPage(aspxFile, blazorServerProject, blazorPagesFolder, aspxCodeBehindSource);
+
+                    if (collect == 4)
+                    {
+                        GC.Collect();
+                        collect = 0;
+                    }
                 }
 
                 //Completed the migration step informing the dialog.
@@ -255,21 +266,20 @@ namespace WebFormsToBlazorServerCommands.Migration
         /// </summary>
         /// <param name="elementToProcess"></param>
         /// <returns>String</returns>
-        private async Task<string> ProcessSourceElement(HtmlNode elementToProcess)
+        private async Task<string> ProcessSourceElement(string elementToProcess, AdapterHost host)
         {
             HtmlNode processedElement = null;
             StringBuilder processedHTML = new StringBuilder();
-            var converterAdapter = new ConverterAdapter();
-            converterAdapter.RegisterControlConverter(new AspxToBlazorControlConverter(converterAdapter));
-
             var htmlParser = new HtmlDocument();
+            htmlParser.LoadHtml(elementToProcess);
+            var contentControlObj = htmlParser.DocumentNode.FirstChild;
             
             try
             {
                 //If this is an ASP:* control then call the migration code, append the *entire* migrated node, and return to the calling method.
-                if (elementToProcess.Name.ToLower().Contains("asp:"))
+                if (contentControlObj.Name.ToLower().Contains("asp:"))
                 {
-                    var newNodeText = await converterAdapter.MigrateTagControl(elementToProcess.Name, elementToProcess.OuterHtml);
+                    var newNodeText = await host.ConvertTag(contentControlObj.Name, contentControlObj.OuterHtml);
 
                     //We do *not* deal with any children of this element, as that is the responsibility of the MigratTagControl to deal with any children of the ASP control
                     return newNodeText;
@@ -279,21 +289,24 @@ namespace WebFormsToBlazorServerCommands.Migration
                     //if the current element has children,
                     // - add it to the targetDocumentFragment without the children attached
                     // - recursively call this method to deal with the children, passing in the new appended as the parent element to append children too
-                    if (elementToProcess.ChildNodes.Count > 0)
+                    if (contentControlObj.ChildNodes.Count > 0)
                     {
                         //shallow clone
-                        processedElement = elementToProcess.CloneNode(false);
+                        processedElement = contentControlObj.CloneNode(false);
                         
-                        foreach (var item in elementToProcess.ChildNodes)
+                        foreach (var item in contentControlObj.ChildNodes)
                         {
-                            var migratedValue = await ProcessSourceElement(item);
-                            var migratedChild = HtmlNode.CreateNode( migratedValue.Length > 0 ? migratedValue : " " );
-                            processedElement.AppendChild(migratedChild);
+                            if (item.NodeType == HtmlNodeType.Element)
+                            {
+                                var migratedValue = await ProcessSourceElement(item.OuterHtml, host);
+                                var migratedChild = HtmlNode.CreateNode(migratedValue.Length > 0 ? migratedValue : " ");
+                                processedElement.AppendChild(migratedChild);
+                            }
                         }
                         processedHTML.Append(processedElement.OuterHtml);
                     } else
                     {
-                        processedHTML.Append((elementToProcess.Clone()).OuterHtml);
+                        processedHTML.Append((contentControlObj.Clone()).OuterHtml);
                     }
                     
                     return processedHTML.ToString();
@@ -302,6 +315,10 @@ namespace WebFormsToBlazorServerCommands.Migration
             catch (Exception ex)
             {
                 throw ex;
+            } 
+            finally
+            {
+                htmlParser = null;
             }
         }
 

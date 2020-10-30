@@ -7,9 +7,11 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CodeFactory.DotNet.CSharp;
+using CodeFactory;
 using CodeFactory.Formatting.CSharp;
 using System.Text;
 using HtmlAgilityPack;
+using CodeFactory.Markup.Adapter;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
@@ -442,6 +444,8 @@ namespace WebFormsToBlazorServerCommands.Migration
             StringBuilder migratedSource = new StringBuilder();
             var docFrag = new HtmlAgilityPack.HtmlDocument();
             docFrag.LoadHtml(sourceAspCode);
+            var converterAdapterHost = new AdapterHost();
+            converterAdapterHost.RegisterAdapter(x => new AspxToBlazorControlConverter(converterAdapterHost));
 
             try
             {
@@ -456,7 +460,7 @@ namespace WebFormsToBlazorServerCommands.Migration
                     //New HtmlAgilityPack parsing which does *not* add HTML/HEAD/BODY etc tags to the source
                     if (child.Name.ToLower().Equals("html"))
                     {
-                        migratedSource.Append(await ProcessSourceElement(child));
+                        //migratedSource.Append(await ProcessSourceElement(child.OuterHtml, converterAdapterHost));
                         continue;
                     }
 
@@ -464,13 +468,13 @@ namespace WebFormsToBlazorServerCommands.Migration
                     {
                         //just take the value of the headTag Regex match from earlier in this method (there are no asp:* controls of any kind that live in the 
                         //HEAD tag - so we can just copy it down to here)
-                        migratedSource.Append(await ProcessSourceElement(child));
+                        migratedSource.Append(await ProcessSourceElement(child.OuterHtml, converterAdapterHost));
                         continue;
                     }
                     if (child.Name.ToLower().Equals("body"))
                     {
                         //We go ahead and process this element.  Any children of the tag are actually handled by the ProcessSourceElement() method
-                        var migratedBodyElement = await ProcessSourceElement(child);
+                        var migratedBodyElement = await ProcessSourceElement(child.OuterHtml, converterAdapterHost);
                         if (!bodyTag.Success)
                         {
                             var matches = Regex.Match(migratedBodyElement, @"<body>([\S\s]*)<\/body>", RegexOptions.IgnoreCase);
@@ -493,7 +497,7 @@ namespace WebFormsToBlazorServerCommands.Migration
                     //Its an element Node - process it.
                     if (child.NodeType.Equals(HtmlNodeType.Element))
                     {
-                        migratedSource.Append(await ProcessSourceElement(child));
+                        migratedSource.Append(await ProcessSourceElement(child.OuterHtml, converterAdapterHost));
                         continue;
                     }
 

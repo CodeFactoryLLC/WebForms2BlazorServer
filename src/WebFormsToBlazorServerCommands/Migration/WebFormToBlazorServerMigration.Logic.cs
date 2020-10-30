@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using CodeFactory.VisualStudio;
 
@@ -23,7 +24,6 @@ namespace WebFormsToBlazorServerCommands.Migration
                 await _statusTracking.UpdateStepStatusAsync(MigrationStepEnum.AppLogic, MigrationStatusEnum.Running);
 
                 var childFiles = webFormProjectData.GetSourceCodeDocumentsAsync(true);
-
 
                 //we don't want any known aspx/ascx files hitching a ride.  just plain vanilla *.cs files should qualify.
                 var logicFiles = childFiles.Where(p => (!p.Name.ToLower().Contains("aspx.") && !p.Name.ToLower().Contains("ascx.") && !p.Name.ToLower().Contains("asax."))).ToList();
@@ -63,21 +63,40 @@ namespace WebFormsToBlazorServerCommands.Migration
                         //copy the file.  We only really care about the most leaf/edge subfolder so its safe to use the creatdFolder variable here.
                         docText = docText.Replace(source.Classes.First().Namespace, $"{blazorServerProject.Name}.{createdFolder.Name}");
 
-                        await createdFolder.AddDocumentAsync(logicDocument.Name, docText);
+                        var targetFolderFiles = await createdFolder.GetChildrenAsync(false);
 
-                        //Updating the dialog with a status
-                        await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AppLogic, MessageTypeEnum.Information,
-                            $"Copied logic file: {logicDocument.Name} to project {blazorServerProject.Name} location: {Path.Combine(createdFolder.Path, logicDocument.Name)}");
+                        if (!targetFolderFiles.Any(c => c.Name.ToLower().Equals(logicDocument.Name.ToLower()) ) )
+                        {
+                            await createdFolder.AddDocumentAsync(logicDocument.Name, docText);
+                            //Updating the dialog with a status
+                            await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AppLogic, MessageTypeEnum.Information,
+                                $"Copied logic file: {logicDocument.Name} to project {blazorServerProject.Name} location: {Path.Combine(createdFolder.Path, logicDocument.Name)}");
+                        } else
+                        {
+                            await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AppLogic, MessageTypeEnum.Warning,
+                                    $"Logic file: {logicDocument.Name} already exists in target folder location: {Path.Combine(createdFolder.Path, logicDocument.Name)} and was skipped.");
+                        }
 
                     }
                     else
                     {
-                        docText = docText.Replace(source.Classes.First().Namespace, $"{blazorServerProject.Name}");
-                        var thing = await blazorServerProject.AddDocumentAsync(logicDocument.Name, docText);
+                        var projFiles = await blazorServerProject.GetChildrenAsync(false);
 
-                        //Updating the dialog with a status
-                        await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AppLogic, MessageTypeEnum.Information,
-                            $"Copied static file: {logicDocument.Name} to project {blazorServerProject.Name} location: {Path.Combine(blazorServerProject.Path, logicDocument.Name)}");
+                        if (!projFiles.Any(c => c.Name.ToLower().Equals(logicDocument.Name.ToLower()) ) ) {
+
+                            docText = docText.Replace(source.Classes.First().Namespace, $"{blazorServerProject.Name}");
+                            var thing = await blazorServerProject.AddDocumentAsync(logicDocument.Name, docText);
+
+                            //Updating the dialog with a status
+                            await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AppLogic, MessageTypeEnum.Information,
+                                $"Copied static file: {logicDocument.Name} to project {blazorServerProject.Name} location: {Path.Combine(blazorServerProject.Path, logicDocument.Name)}");
+                        }
+                        else
+                        {
+                            //Updating the dialog with a status
+                            await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AppLogic, MessageTypeEnum.Warning,
+                                $"Static file: {logicDocument.Name} already exists in project {blazorServerProject.Name} location: {Path.Combine(blazorServerProject.Path, logicDocument.Name)} and was skipped.");
+                        }
                     }
                 }
 

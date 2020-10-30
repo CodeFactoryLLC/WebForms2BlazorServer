@@ -18,7 +18,7 @@ namespace WebFormsToBlazorServerCommands.Commands.Document
     public class MigrateWebForm : ProjectDocumentCommandBase
     {
         private static readonly string commandTitle = "Migrate to Blazor";
-        private static readonly string commandDescription = "Replace with description of what this command does";
+        private static readonly string commandDescription = "Migrates a single *.aspx page to a Blazor componenet.";
 
 #pragma warning disable CS1998
 
@@ -62,7 +62,7 @@ namespace WebFormsToBlazorServerCommands.Commands.Document
         {
             try
             {
-                //User Control to see the AngleSharp Nodes
+                //User Control
                 var migrateDialog = await VisualStudioActions.UserInterfaceActions.CreateVsUserControlAsync<MigrateWebFormDialog>();
 
                 //Get Project List

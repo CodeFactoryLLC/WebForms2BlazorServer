@@ -34,7 +34,10 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="CodeFactory.Formatting.CSharp">
-      <Version>0.90.202181</Version>
+      <Version>0.90.202401</Version>
+    </PackageReference>
+    <PackageReference Include="CodeFactory.Markup.Adapter">
+      <Version>1.0.20288</Version>
     </PackageReference>
     <PackageReference Include="HtmlAgilityPack">
       <Version>1.11.24</Version>
@@ -50,7 +53,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <PackageReference Include="CodeFactorySDK">
-      <Version>1.0.202021</Version>
+      <Version>1.0.202301</Version>
     </PackageReference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -70,7 +73,6 @@
     </Compile>
     <Compile Include="Migration\Adapters\AspxToBlazorControlConverter.cs" />
     <Compile Include="Migration\Adapters\ControlConverterBase.cs" />
-    <Compile Include="Migration\ConverterAdapter.cs" />
     <Compile Include="Migration\IControlConverter.cs" />
     <Compile Include="Migration\IMigrationStatusUpdate.cs" />
     <Compile Include="Migration\ITagControlConverter.cs" />
