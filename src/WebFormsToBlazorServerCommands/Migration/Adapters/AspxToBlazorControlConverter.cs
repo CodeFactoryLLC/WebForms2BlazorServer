@@ -42,6 +42,17 @@ namespace WebFormsToBlazorServerCommands.Migration
             this.RegisterSupportTag("asp:placeholder");
             this.RegisterSupportTag("asp:requiredfieldvalidator");
             this.RegisterSupportTag("asp:literal");
+
+            this.RegisterSupportTag("asp:validationsummary");
+            this.RegisterSupportTag("asp:modelerrormessage");
+            this.RegisterSupportTag("asp:comparevalidator");
+            this.RegisterSupportTag("asp:fileupload");
+            this.RegisterSupportTag("asp:regularexpressionvalidator");
+            this.RegisterSupportTag("asp:gridview");
+            this.RegisterSupportTag("asp:boundfield");
+            this.RegisterSupportTag("asp:detailsview");
+            this.RegisterSupportTag("asp:templatefield");
+
         }
 
         /// <summary>

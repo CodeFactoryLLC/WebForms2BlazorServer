@@ -85,8 +85,9 @@ namespace WebFormsToBlazorServerCommands.Migration
                         if (!projFiles.Any(c => c.Name.ToLower().Equals(logicDocument.Name.ToLower()) ) ) {
 
                             docText = docText.Replace(source.Classes.First().Namespace, $"{blazorServerProject.Name}");
+                            
                             var thing = await blazorServerProject.AddDocumentAsync(logicDocument.Name, docText);
-
+                            
                             //Updating the dialog with a status
                             await _statusTracking.UpdateCurrentStatusAsync(MigrationStepEnum.AppLogic, MessageTypeEnum.Information,
                                 $"Copied static file: {logicDocument.Name} to project {blazorServerProject.Name} location: {Path.Combine(blazorServerProject.Path, logicDocument.Name)}");
