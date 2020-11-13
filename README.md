@@ -3,9 +3,9 @@
 This project is an implementation of a CodeFactory automation template designed specifically to migrate an existing legacy .NET Webforms application to a Blazor Server application.  This template is offered as open-source and anyone can download and alter it to suit the particular needs of any WebForms migration efforts that they are faced with.
 
 ## New to CodeFactory?
-In the simplest terms, CodeFactory is a real time software factory that is triggered from inside Visual Studio during the design and construction of software. CodeFactory allows for development staff to automate repetitive development tasks that take up developer’s time.
+In the simplest terms, CodeFactory is a real time software factory that is triggered from inside Visual Studio during the design and construction of software. CodeFactory allows for development staff to automate repetitive development tasks that take up developerâ€™s time.
 
-Please see the following link for further information and guidance about the [CodeFactory Runtime](https://github.com/CodeFactoryLLC/CodeFactory) or the [CodeFactory SDK](https://www.nuget.org/packages/CodeFactorySDK/).
+Please see the following link for further information and guidance about the [CodeFactory Runtime](https://github.com/CodeFactoryLLC/CodeFactory) or the [CodeFactory SDK](https://www.nuget.org/packages/CodeFactorySDK/). Register here for a free trial license of [CodeFactory RT}(https://www.codefactory.software/freetrial).
 
 ## Core purpose of the template
 This automation template was built using the [CodeFactory SDK](https://www.nuget.org/packages/CodeFactorySDK/) to make the task of migrating/converting a legacy .NET WebForms web application over to an updated Blazor Server-side application.  The template has the following commands and features avaible to anyone who has a valid copy of [CodeFactory Runtime](http://www.codefactory.software) installed as an extension inside of their local copy of Visual Studio.
