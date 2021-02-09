@@ -12,6 +12,7 @@ using CodeFactory.Formatting.CSharp;
 using System.Text;
 using HtmlAgilityPack;
 using CodeFactory.Markup.Adapter;
+using NLog.Targets;
 
 namespace WebFormsToBlazorServerCommands.Migration
 {
@@ -49,6 +50,7 @@ namespace WebFormsToBlazorServerCommands.Migration
         /// <param name="steps">The migration steps that are to be run.</param>
         public async Task StartMigration(VsProject webFormsProject, VsProject blazorServerProject, MigrationSteps steps)
         {
+            
             try
             {
                 //bounds checking that migration steps were provided.
@@ -96,7 +98,10 @@ namespace WebFormsToBlazorServerCommands.Migration
                 //Loading the visual studio models from the webFormsProject.
                 //This is a resource intensive task we only need to do this once since we are never updating the web forms project.
                 //We will cache this data and pass it on to all parts of the migration process
-                var webFormProjectData = await webFormsProject.LoadAllProjectData();
+                //var filePath = new DirectoryInfo(webFormsProject.Path).FullName;
+
+
+                var webFormProjectData = await webFormsProject.LoadAllProjectData(false);
 
                 //Confirming the web forms data has been cached
                 if (webFormProjectData.Any())

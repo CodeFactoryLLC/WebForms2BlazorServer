@@ -167,6 +167,9 @@ namespace WebFormsToBlazorServerCommands.Migration
         {
             try
             {
+                
+
+                
                 //VsCSharpSource aspxCodeBehindFile
                 //Getting the formatted names that will be used in migrating the ASPX file and its code behind to the blazor project.
                 string targetFileNameNoExtension = Path.GetFileNameWithoutExtension(aspxSourcefile.Path);
