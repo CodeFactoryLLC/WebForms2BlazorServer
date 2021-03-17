@@ -35,8 +35,8 @@ namespace WebFormsToBlazorServerCommands.Migration
                 //Informing the dialog the migration step has started.
                 await _statusTracking.UpdateStepStatusAsync(MigrationStepEnum.AspxPages, MigrationStatusEnum.Running);
 
-                //Getting all the aspx files in the project.
-                var aspxFiles = webFormProjectData.Where(p => p.ModelType == VisualStudioModelType.Document && p.Name.EndsWith(".aspx")).Cast<VsDocument>();
+                //Getting all the aspx & ascx files in the project.
+                var aspxFiles = webFormProjectData.Where(p => p.ModelType == VisualStudioModelType.Document && ( p.Name.EndsWith(".aspx") || p.Name.EndsWith(".ascx"))).Cast<VsDocument>();
 
                 if (!aspxFiles.Any())
                 {
@@ -85,6 +85,7 @@ namespace WebFormsToBlazorServerCommands.Migration
                     //Getting the formatted names that will be used in migrating the ASPX file and its code behind to the blazor project.
                     string targetFileNameNoExtension = Path.GetFileNameWithoutExtension(aspxFile.Path);
                     string aspxCodeBehindFileName = $"{targetFileNameNoExtension}.aspx.cs";
+                    string ascxCodeBehindFileName = $"{targetFileNameNoExtension}.axcs.cs";
                     string razorPageFileName = $"{targetFileNameNoExtension}.razor";
                     string razorPageCodeBehindFileName = $"{targetFileNameNoExtension}.razor.cs";
 
@@ -135,13 +136,22 @@ namespace WebFormsToBlazorServerCommands.Migration
                         }
                     }
 
+                    VsCSharpSource CodeBehindSource = null;
+                    if (aspxFile.Path.Contains("ascx"))
+                    {
+                        //Getting the code behind file that supports the current aspx page.
+                        CodeBehindSource = webFormProjectData
+                            .Where(m => m.ModelType == VisualStudioModelType.CSharpSource).Cast<VsCSharpSource>()
+                            .FirstOrDefault(s => s.SourceCode.SourceDocument.ToLower().EndsWith(ascxCodeBehindFileName.ToLower())) as VsCSharpSource;
+                    }
+
                     //Getting the code behind file that supports the current aspx page.
-                    var aspxCodeBehindSource = webFormProjectData
+                    CodeBehindSource = webFormProjectData
                         .Where(m => m.ModelType == VisualStudioModelType.CSharpSource).Cast<VsCSharpSource>()
                         .FirstOrDefault(s => s.SourceCode.SourceDocument.ToLower().EndsWith(aspxCodeBehindFileName.ToLower())) as VsCSharpSource;
 
                     //Converting the aspx page and the code behind file if it was found.
-                    await ConvertAspxPage(aspxFile, blazorServerProject, blazorPagesFolder, aspxCodeBehindSource);
+                    await ConvertAspxPage(aspxFile, blazorServerProject, blazorPagesFolder, CodeBehindSource);
 
                     if (collect == 4)
                     {
