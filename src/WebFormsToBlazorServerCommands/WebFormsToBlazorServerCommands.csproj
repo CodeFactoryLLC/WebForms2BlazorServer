@@ -53,7 +53,7 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <PackageReference Include="CodeFactorySDK">
-      <Version>1.21068.1</Version>
+      <Version>1.21085.1</Version>
     </PackageReference>
     <Reference Include="PresentationCore" />
     <Reference Include="PresentationFramework" />
@@ -173,7 +173,7 @@
   <Target Name="BeforeBuild">
   </Target> -->
   <Target Name="AfterBuild">
-    <Exec Command="&quot;$(DevEnvDir)PublicAssemblies\CodeFactory\Packager\cfxpackager.exe&quot; &quot;$(TargetPath)&quot;" />
+    <!--<Exec Command="&quot;$(DevEnvDir)PublicAssemblies\CodeFactory\Packager\cfxpackager.exe&quot; &quot;$(TargetPath)&quot;" />-->
     <!-- <PackageCfx Assembly="$(TargetPath)"/>-->
   </Target>
 </Project>
