@@ -2,7 +2,7 @@
 This set of documentation goes into the details of the example CodeFactory Code Automation Template **WebFormsToBlazor**.  If you need explainations of what a Code Automation Template is or how CodeFactory works please use the following link to that documentation.  [CodeFactory Guidance](http://docs.codefactory.software/guidance/intro.html)
 
 ## Template Overview
-In order to make use of this template you will need to have a target WebForms solution, in our examples below we reference the [*WingTipToys*]() project.  This is an older reference project that is freely available to anyone who wished to download it and give this template a try.  Once you have your project open inside of Visual Studio - go ahead and add a new Project to the solution of type Blazor - Server.
+In order to make use of this template you will need to have a target WebForms solution, in our examples below we reference the [*WingTipToys*](https://github.com/corn-pivotal/wingtiptoys) project.  This is an older reference project that is freely available to anyone who wished to download it and give this template a try.  Once you have your project open inside of Visual Studio - go ahead and add a new Project to the solution of type Blazor - Server.
 
 ![](./images/AddNewBlazorProject.png)
 
